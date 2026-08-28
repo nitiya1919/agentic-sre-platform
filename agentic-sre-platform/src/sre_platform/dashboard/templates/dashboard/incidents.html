@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incidents - Agentic SRE Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+    <!-- Navbar -->
+    <nav class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center space-x-6">
+            <div class="flex items-center space-x-3">
+                <span class="h-3 w-3 bg-emerald-500 rounded-full animate-pulse"></span>
+                <h1 class="text-xl font-bold tracking-tight text-white">Agentic SRE</h1>
+            </div>
+            <div class="hidden md:flex items-center space-x-1 bg-slate-950/50 p-1 rounded-lg border border-slate-800 text-sm">
+                <a href="{% url 'index' %}" class="px-3 py-1.5 rounded-md text-slate-400 hover:text-slate-200 transition">Dashboard</a>
+                <a href="{% url 'incident_dashboard' %}" class="px-3 py-1.5 rounded-md bg-slate-800 text-cyan-400 font-medium transition">Incidents</a>
+                <a href="{% url 'approval_dashboard' %}" class="px-3 py-1.5 rounded-md text-slate-400 hover:text-slate-200 transition">Approvals</a>
+            </div>
+        </div>
+        <div>
+            <a href="{% url 'index' %}" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 transition">&larr; Back to Command Center</a>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl w-full mx-auto p-6 space-y-6 flex-1">
+        <div class="flex justify-between items-center">
+            <div>
+                <h2 class="text-xl font-bold text-slate-100">All Incident Alerts</h2>
+                <p class="text-xs text-slate-400 mt-0.5">Comprehensive view of all ingested monitoring alerts and automated evaluations.</p>
+            </div>
+        </div>
+
+        <!-- Incidents Table -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-950/50 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+                            <th class="px-6 py-3">ID</th>
+                            <th class="px-6 py-3">Incident Name</th>
+                            <th class="px-6 py-3">Target Host</th>
+                            <th class="px-6 py-3">Severity</th>
+                            <th class="px-6 py-3">Status</th>
+                            <th class="px-6 py-3">Created At</th>
+                            <th class="px-6 py-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800 text-sm">
+                        {% for incident in incidents %}
+                        <tr class="hover:bg-slate-800/40 transition">
+                            <td class="px-6 py-4 font-mono text-slate-400">#{{ incident.id }}</td>
+                            <td class="px-6 py-4 font-medium text-slate-200">
+                                {{ incident.alert_name }}
+                                <div class="text-xs text-slate-400 font-normal mt-0.5">{{ incident.summary|truncatechars:60 }}</div>
+                            </td>
+                            <td class="px-6 py-4 font-mono text-xs text-cyan-400">{{ incident.target_host }}</td>
+                            <td class="px-6 py-4">
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full 
+                                    {% if incident.severity == 'HIGH' or incident.severity == 'CRITICAL' %} bg-rose-500/10 text-rose-400 border border-rose-500/20
+                                    {% else %} bg-amber-500/10 text-amber-400 border border-amber-500/20 {% endif %}">
+                                    {{ incident.severity }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full
+                                    {% if incident.status == 'RESOLVED' or incident.status == 'COMPLETED' %} bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
+                                    {% elif incident.status == 'PENDING_APPROVAL' or incident.status == 'REQUIRES_APPROVAL' %} bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse
+                                    {% elif incident.status == 'REMEDIATION_IN_PROGRESS' %} bg-blue-500/10 text-blue-400 border border-blue-500/20
+                                    {% else %} bg-slate-800 text-slate-300 border border-slate-700 {% endif %}">
+                                    {{ incident.status }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-xs text-slate-400">{{ incident.created_at|date:"Y-m-d H:i:s" }}</td>
+                            <td class="px-6 py-4 text-right space-x-2">
+                                {% if incident.status == 'PENDING_APPROVAL' or incident.status == 'REQUIRES_APPROVAL' %}
+                                    <form action="{% url 'approve_action' incident.id %}" method="POST" class="inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded shadow transition">Approve</button>
+                                    </form>
+                                    <form action="{% url 'reject_action' incident.id %}" method="POST" class="inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold px-3 py-1.5 rounded shadow transition">Reject</button>
+                                    </form>
+                                {% else %}
+                                    <span class="text-xs text-slate-500 italic">No action</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="px-6 py-12 text-center text-slate-500">No incidents recorded in the database.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
